@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/storage/mgmt/2018-03-01-preview/storage"
+	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2018-02-01/resources"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/spf13/cobra"
@@ -22,6 +23,7 @@ import (
 var postmanCollection string
 var postmanIterations int
 var storExists bool
+var location string
 
 var newman = &cobra.Command{
 	Use:   "newman",
@@ -64,12 +66,38 @@ var newman = &cobra.Command{
 		if *data.NameAvailable {
 			fmt.Println("Storeage name is available")
 		}
+
+		// Create resource group, check if exists
+		groupsClient := resources.NewGroupsClient(subID)
+		groupsClient.Authorizer = authorizer
+
+		rgCheck, err := groupsClient.CheckExistence(context.Background(), storName)
+		if err != nil {
+			log.Println(err)
+		}
+
+		var group resources.Group
+		if rgCheck.StatusCode == 404 {
+			group, err = groupsClient.CreateOrUpdate(context.Background(), storName, resources.Group{Location: &location})
+			if err != nil {
+				log.Println(err)
+			}
+		} else {
+			group, err = groupsClient.Get(context.Background(), storName)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+
+		fmt.Println(*group.Name)
+
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(newman)
 	newman.Flags().StringVarP(&postmanCollection, "collection-file", "c", "", "Postman Collection file name.")
+	newman.Flags().StringVarP(&location, "location", "l", "", "Location to put resources. Example: eastus")
 	newman.Flags().IntVarP(&postmanIterations, "number", "n", 1, "Number of iterations")
 }
 
