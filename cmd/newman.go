@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -19,6 +21,11 @@ var newman = &cobra.Command{
 	Long:  "TODO: put more info here",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Newman called")
+
+		// Get envvars
+		subID := os.Getenv("AZURE_SUB_ID")
+		storName := fmt.Sprintf("flare-%s", strings.Split(subID, "-")[4])
+		println(storName)
 	},
 }
 
