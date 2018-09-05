@@ -6,11 +6,13 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"os"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/storage/mgmt/2018-03-01-preview/storage"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2018-02-01/resources"
+	"github.com/Azure/azure-storage-blob-go/2018-03-28/azblob"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/spf13/cobra"
@@ -25,6 +27,10 @@ var postmanIterations int
 var storExists bool
 var location string
 
+var (
+	blobFormatString = `https://%s.blob.core.windows.net`
+)
+
 var newman = &cobra.Command{
 	Use:   "newman",
 	Short: "Run newman collection",
@@ -32,6 +38,7 @@ var newman = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Newman called")
 		ctx := context.Background()
+		var primaryKey string
 
 		// create an authorizer from env vars or Azure Managed Service Identity
 		authorizer, err := auth.NewAuthorizerFromEnvironment()
@@ -115,22 +122,52 @@ var newman = &cobra.Command{
 			result, _ := future.Result(storAccountClient)
 
 			fmt.Println(*result.Name)
+
+			// Get Primary Key
+			primaryKey, err = getStorageAccountPrimaryKey(ctx, &storAccountClient, storName, storName)
+
+			// Create storage containers
+			blobCred := azblob.NewSharedKeyCredential(storName, primaryKey)
+			accountURL, _ := url.Parse(fmt.Sprintf(blobFormatString, storName))
+			pipline := azblob.NewPipeline(blobCred, azblob.PipelineOptions{})
+			service := azblob.NewServiceURL(*accountURL, pipline)
+			containerCollection := service.NewContainerURL("collection")
+			containerReport := service.NewContainerURL("report")
+
+			_, err = containerCollection.Create(ctx, azblob.Metadata{}, azblob.PublicAccessContainer)
+			if err != nil {
+				log.Println(err)
+			}
+
+			_, err = containerReport.Create(ctx, azblob.Metadata{}, azblob.PublicAccessContainer)
+			if err != nil {
+				log.Println(err)
+			}
 		}
 
-		// Get Primary storage account key
-		keyResult, err := storAccountClient.ListKeys(ctx, storName, storName)
-		if err != nil {
-			log.Println(err)
+		// first pass primary key from create, if not create need to get for upload
+		if primaryKey == "" {
+			primaryKey, err = getStorageAccountPrimaryKey(ctx, &storAccountClient, storName, storName)
 		}
-
-		primaryKey := *(((*keyResult.Keys)[0]).Value)
-
-		fmt.Printf("Primary storage account key: %s\n", primaryKey)
 
 		// All done
 		fmt.Println("Completed")
 
 	},
+}
+
+func getStorageAccountPrimaryKey(ctx context.Context, storageAccountClient *storage.AccountsClient, accountName, accountGroupName string) (string, error) {
+	// Get Primary storage account key
+	keyResult, err := storageAccountClient.ListKeys(ctx, accountGroupName, accountName)
+	if err != nil {
+		log.Println(err)
+	}
+
+	primaryKey := *(((*keyResult.Keys)[0]).Value)
+
+	fmt.Printf("Primary storage account key: %s\n", primaryKey)
+
+	return primaryKey, err
 }
 
 func init() {
