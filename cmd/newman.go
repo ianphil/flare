@@ -32,40 +32,16 @@ var newman = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Newman called")
 
+		// create an authorizer from env vars or Azure Managed Service Identity
+		authorizer, err := auth.NewAuthorizerFromEnvironment()
+		if err != nil {
+			fmt.Println("Not Authorized")
+		}
+
 		// Get envvars and generate storage account name based on last part of subID
 		subID := os.Getenv("AZURE_SUB_ID")
 		storName := strings.ToLower(fmt.Sprintf("flare%s", strings.Split(subID, "-")[4]))
 		println(storName)
-
-		// Test if storage exists
-		storAccountClient := storage.NewAccountsClient(subID)
-		storAccountClient.RequestInspector = logRequest()
-		storAccountClient.ResponseInspector = logResponse()
-
-		// create an authorizer from env vars or Azure Managed Service Identity
-		authorizer, err := auth.NewAuthorizerFromEnvironment()
-		if err == nil {
-			storAccountClient.Authorizer = authorizer
-			fmt.Println("Authorized")
-		}
-
-		storType := "Microsoft.Storage/storageAccounts"
-		checkName := storage.AccountCheckNameAvailabilityParameters{
-			Name: &storName,
-			Type: &storType,
-		}
-
-		// Check name, I will assume if it's false that the name exists in current sub
-		// probably should harden this logic but it's almost safe because of the name/sub
-		// relationship.
-		data, err := storAccountClient.CheckNameAvailability(context.Background(), checkName)
-		if err != nil {
-			log.Println(err)
-		}
-
-		if *data.NameAvailable {
-			fmt.Println("Storeage name is available")
-		}
 
 		// Create resource group, check if exists
 		groupsClient := resources.NewGroupsClient(subID)
@@ -90,6 +66,60 @@ var newman = &cobra.Command{
 		}
 
 		fmt.Println(*group.Name)
+
+		// Test if storage exists
+		storAccountClient := storage.NewAccountsClient(subID)
+		storAccountClient.Authorizer = authorizer
+		//storAccountClient.RequestInspector = logRequest()
+		//storAccountClient.ResponseInspector = logResponse()
+
+		storType := "Microsoft.Storage/storageAccounts"
+		checkName := storage.AccountCheckNameAvailabilityParameters{
+			Name: &storName,
+			Type: &storType,
+		}
+
+		// Check name, I will assume if it's false that the name exists in current sub
+		// probably should harden this logic but it's almost safe because of the name/sub
+		// relationship.
+		data, err := storAccountClient.CheckNameAvailability(context.Background(), checkName)
+		if err != nil {
+			log.Println(err)
+		}
+
+		// Create Storage Account
+		if *data.NameAvailable {
+			fmt.Println("Storeage name is available")
+
+			ctx := context.Background()
+
+			future, err := storAccountClient.Create(
+				ctx,
+				storName,
+				storName,
+				storage.AccountCreateParameters{
+					Sku: &storage.Sku{
+						Name: storage.StandardLRS},
+					Kind:                              storage.Storage,
+					Location:                          &location,
+					AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{},
+				})
+			if err != nil {
+				log.Println(err)
+			}
+
+			err = future.WaitForCompletion(ctx, storAccountClient.Client)
+			if err != nil {
+				log.Println(err)
+			}
+
+			result, _ := future.Result(storAccountClient)
+
+			fmt.Println(*result.ID)
+		}
+
+		// All done
+		fmt.Println("Completed")
 
 	},
 }
