@@ -31,6 +31,7 @@ var newman = &cobra.Command{
 	Long:  "TODO: put more info here",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Newman called")
+		ctx := context.Background()
 
 		// create an authorizer from env vars or Azure Managed Service Identity
 		authorizer, err := auth.NewAuthorizerFromEnvironment()
@@ -47,19 +48,19 @@ var newman = &cobra.Command{
 		groupsClient := resources.NewGroupsClient(subID)
 		groupsClient.Authorizer = authorizer
 
-		rgCheck, err := groupsClient.CheckExistence(context.Background(), storName)
+		rgCheck, err := groupsClient.CheckExistence(ctx, storName)
 		if err != nil {
 			log.Println(err)
 		}
 
 		var group resources.Group
 		if rgCheck.StatusCode == 404 {
-			group, err = groupsClient.CreateOrUpdate(context.Background(), storName, resources.Group{Location: &location})
+			group, err = groupsClient.CreateOrUpdate(ctx, storName, resources.Group{Location: &location})
 			if err != nil {
 				log.Println(err)
 			}
 		} else {
-			group, err = groupsClient.Get(context.Background(), storName)
+			group, err = groupsClient.Get(ctx, storName)
 			if err != nil {
 				log.Println(err)
 			}
@@ -82,7 +83,7 @@ var newman = &cobra.Command{
 		// Check name, I will assume if it's false that the name exists in current sub
 		// probably should harden this logic but it's almost safe because of the name/sub
 		// relationship.
-		data, err := storAccountClient.CheckNameAvailability(context.Background(), checkName)
+		data, err := storAccountClient.CheckNameAvailability(ctx, checkName)
 		if err != nil {
 			log.Println(err)
 		}
@@ -90,8 +91,6 @@ var newman = &cobra.Command{
 		// Create Storage Account
 		if *data.NameAvailable {
 			fmt.Println("Storeage name is available")
-
-			ctx := context.Background()
 
 			future, err := storAccountClient.Create(
 				ctx,
@@ -115,8 +114,18 @@ var newman = &cobra.Command{
 
 			result, _ := future.Result(storAccountClient)
 
-			fmt.Println(*result.ID)
+			fmt.Println(*result.Name)
 		}
+
+		// Get Primary storage account key
+		keyResult, err := storAccountClient.ListKeys(ctx, storName, storName)
+		if err != nil {
+			log.Println(err)
+		}
+
+		primaryKey := *(((*keyResult.Keys)[0]).Value)
+
+		fmt.Printf("Primary storage account key: %s\n", primaryKey)
 
 		// All done
 		fmt.Println("Completed")
