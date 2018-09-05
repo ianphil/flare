@@ -39,6 +39,7 @@ var newman = &cobra.Command{
 		fmt.Println("Newman called")
 		ctx := context.Background()
 		var primaryKey string
+		var containerCollection azblob.ContainerURL
 
 		// create an authorizer from env vars or Azure Managed Service Identity
 		authorizer, err := auth.NewAuthorizerFromEnvironment()
@@ -127,12 +128,8 @@ var newman = &cobra.Command{
 			primaryKey, err = getStorageAccountPrimaryKey(ctx, &storAccountClient, storName, storName)
 
 			// Create storage containers
-			blobCred := azblob.NewSharedKeyCredential(storName, primaryKey)
-			accountURL, _ := url.Parse(fmt.Sprintf(blobFormatString, storName))
-			pipline := azblob.NewPipeline(blobCred, azblob.PipelineOptions{})
-			service := azblob.NewServiceURL(*accountURL, pipline)
-			containerCollection := service.NewContainerURL("collection")
-			containerReport := service.NewContainerURL("report")
+			containerCollection = getContainerURL(ctx, storName, "collection", primaryKey)
+			containerReport := getContainerURL(ctx, storName, "report", primaryKey)
 
 			_, err = containerCollection.Create(ctx, azblob.Metadata{}, azblob.PublicAccessContainer)
 			if err != nil {
@@ -150,10 +147,35 @@ var newman = &cobra.Command{
 			primaryKey, err = getStorageAccountPrimaryKey(ctx, &storAccountClient, storName, storName)
 		}
 
+		// Upload postman collection file to collection container
+		if containerCollection == (azblob.ContainerURL{}) {
+			containerCollection = getContainerURL(ctx, storName, "collection", primaryKey)
+			fmt.Println(containerCollection.String())
+		}
+
+		blobURL := containerCollection.NewBlockBlobURL(postmanCollection)
+		file, err := os.Open(postmanCollection)
+		if err != nil {
+			log.Println(err)
+		}
+
+		_, err = azblob.UploadFileToBlockBlob(ctx, file, blobURL, azblob.UploadToBlockBlobOptions{
+			BlockSize:   4 * 1024 * 1024,
+			Parallelism: 16,
+		})
+
 		// All done
 		fmt.Println("Completed")
 
 	},
+}
+
+func getContainerURL(ctx context.Context, accountName, containerName, primaryKey string) azblob.ContainerURL {
+	blobCred := azblob.NewSharedKeyCredential(accountName, primaryKey)
+	accountURL, _ := url.Parse(fmt.Sprintf(blobFormatString, accountName))
+	pipline := azblob.NewPipeline(blobCred, azblob.PipelineOptions{})
+	service := azblob.NewServiceURL(*accountURL, pipline)
+	return service.NewContainerURL(containerName)
 }
 
 func getStorageAccountPrimaryKey(ctx context.Context, storageAccountClient *storage.AccountsClient, accountName, accountGroupName string) (string, error) {
