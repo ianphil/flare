@@ -14,8 +14,11 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2018-02-01/resources"
 	"github.com/Azure/azure-storage-blob-go/2018-03-28/azblob"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/iphilpot/flare/apis/common"
+	"github.com/iphilpot/flare/apis/iam"
 	"github.com/spf13/cobra"
+
+	apiStorage "github.com/iphilpot/flare/apis/storage"
 )
 
 /*
@@ -36,16 +39,10 @@ var newman = &cobra.Command{
 	Short: "Run newman collection",
 	Long:  "TODO: put more info here",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Newman called")
+		common.PrintAndLog("Newman called")
 		ctx := context.Background()
 		var primaryKey string
 		var containerCollection azblob.ContainerURL
-
-		// create an authorizer from env vars or Azure Managed Service Identity
-		authorizer, err := auth.NewAuthorizerFromEnvironment()
-		if err != nil {
-			fmt.Println("Not Authorized")
-		}
 
 		// Get envvars and generate storage account name based on last part of subID
 		subID := os.Getenv("AZURE_SUB_ID")
@@ -54,7 +51,7 @@ var newman = &cobra.Command{
 
 		// Create resource group, check if exists
 		groupsClient := resources.NewGroupsClient(subID)
-		groupsClient.Authorizer = authorizer
+		groupsClient.Authorizer = iam.GetAuthorizerFromEnvironment()
 
 		rgCheck, err := groupsClient.CheckExistence(ctx, storName)
 		if err != nil {
@@ -78,7 +75,7 @@ var newman = &cobra.Command{
 
 		// Test if storage exists
 		storAccountClient := storage.NewAccountsClient(subID)
-		storAccountClient.Authorizer = authorizer
+		storAccountClient.Authorizer = iam.GetAuthorizerFromEnvironment()
 		//storAccountClient.RequestInspector = logRequest()
 		//storAccountClient.ResponseInspector = logResponse()
 
@@ -107,8 +104,8 @@ var newman = &cobra.Command{
 				storage.AccountCreateParameters{
 					Sku: &storage.Sku{
 						Name: storage.StandardLRS},
-					Kind:                              storage.Storage,
-					Location:                          &location,
+					Kind:     storage.Storage,
+					Location: &location,
 					AccountPropertiesCreateParameters: &storage.AccountPropertiesCreateParameters{},
 				})
 			if err != nil {
@@ -125,7 +122,7 @@ var newman = &cobra.Command{
 			fmt.Println(*result.Name)
 
 			// Get Primary Key
-			primaryKey, err = getStorageAccountPrimaryKey(ctx, &storAccountClient, storName, storName)
+			primaryKey, err = apiStorage.GetStorageAccountPrimaryKey(ctx, &storAccountClient, storName, storName)
 
 			// Create storage containers
 			containerCollection = getContainerURL(ctx, storName, "collection", primaryKey)
@@ -144,7 +141,7 @@ var newman = &cobra.Command{
 
 		// first pass primary key from create, if not create need to get for upload
 		if primaryKey == "" {
-			primaryKey, err = getStorageAccountPrimaryKey(ctx, &storAccountClient, storName, storName)
+			primaryKey, err = apiStorage.GetStorageAccountPrimaryKey(ctx, &storAccountClient, storName, storName)
 		}
 
 		// Upload postman collection file to collection container
@@ -171,7 +168,11 @@ var newman = &cobra.Command{
 }
 
 func getContainerURL(ctx context.Context, accountName, containerName, primaryKey string) azblob.ContainerURL {
-	blobCred := azblob.NewSharedKeyCredential(accountName, primaryKey)
+	blobCred, err := azblob.NewSharedKeyCredential(accountName, primaryKey)
+	if err != nil {
+		log.Println(err)
+	}
+
 	accountURL, _ := url.Parse(fmt.Sprintf(blobFormatString, accountName))
 	pipline := azblob.NewPipeline(blobCred, azblob.PipelineOptions{})
 	service := azblob.NewServiceURL(*accountURL, pipline)
