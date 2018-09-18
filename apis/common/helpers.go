@@ -24,3 +24,10 @@ func ReadJSON(path string) (*map[string]interface{}, error) {
 	json.Unmarshal(data, &contents)
 	return &contents, nil
 }
+
+// HandleError - prints and logs error
+func HandleError(err error) {
+	if err != nil {
+		log.Fatalf("failed to read template file: %v\n", err)
+	}
+}
