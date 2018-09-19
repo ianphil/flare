@@ -7,6 +7,7 @@ import (
 
 	"github.com/Azure/azure-storage-blob-go/2018-03-28/azblob"
 	"github.com/iphilpot/flare/apis/errors"
+	"github.com/iphilpot/flare/apis/logger"
 )
 
 var (
@@ -17,7 +18,16 @@ var (
 func CreateStorageContainer(ctx context.Context, storageAccountName, resourceGroupName, storageContainerName string) {
 	storageContainer := getContainerURL(ctx, storageAccountName, resourceGroupName, storageContainerName)
 	_, err := storageContainer.Create(ctx, azblob.Metadata{}, azblob.PublicAccessContainer)
-	errors.HandleError(err)
+	if err != nil {
+		if stErr, ok := err.(azblob.StorageError); ok {
+			code := stErr.ServiceCode()
+			if code != azblob.ServiceCodeContainerAlreadyExists {
+				errors.HandleError(err)
+			} else {
+				logger.PrintAndLog("Container already exists")
+			}
+		}
+	}
 }
 
 func getContainerURL(ctx context.Context, storageAccountName, resourceGroupName, storageContainerName string) azblob.ContainerURL {

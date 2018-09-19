@@ -11,7 +11,7 @@ import (
 func GenerateNames() (storageAccountName, resourceGroupName string) {
 	c := config.GetConfig()
 	subscriptionIDLastPart := strings.Split(c.AzureSubscriptionID, "-")[4]
-	storageAccountName = strings.ToLower(fmt.Sprintf("flare-sa-%s", subscriptionIDLastPart))
-	resourceGroupName = strings.ToLower(fmt.Sprintf("flare-rg-%s", subscriptionIDLastPart))
+	storageAccountName = strings.ToLower(fmt.Sprintf("flaresa%s", subscriptionIDLastPart))
+	resourceGroupName = strings.ToLower(fmt.Sprintf("flarerg%s", subscriptionIDLastPart))
 	return storageAccountName, resourceGroupName
 }

@@ -32,7 +32,7 @@ func CreateResourceGroup(ctx context.Context, resourceGroupName, location string
 	rgCheck := checkResourceGroupExists(ctx, resourceGroupName)
 	var group resources.Group
 	var err error
-	if rgCheck {
+	if !rgCheck {
 		group, err = client.CreateOrUpdate(ctx, resourceGroupName, resources.Group{Location: &location})
 		errors.HandleError(err)
 	} else {

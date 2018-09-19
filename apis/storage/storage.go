@@ -32,7 +32,10 @@ func checkStorageAccountNameAvailable(ctx context.Context, storageAccountName *s
 	}
 	data, err := client.CheckNameAvailability(ctx, checkName)
 	errors.HandleError(err)
-
+	if data.Reason != "AlreadyExists" && *data.NameAvailable == false { // This is just in case the name has bad chars
+		err := fmt.Errorf("error: Storage Account Name is has invlaid characters")
+		errors.HandleError(err)
+	}
 	return *data.NameAvailable
 }
 
@@ -44,10 +47,10 @@ func GetAccountKeys(ctx context.Context, storageAccountName, resourceGroupName s
 
 // GetStorageAccountPrimaryKey - Return primary key of storage account.
 func GetStorageAccountPrimaryKey(ctx context.Context, storageAccountName, resourceGroupName string) string {
-	keyResult, err := GetAccountKeys(ctx, resourceGroupName, storageAccountName)
+	keyResult, err := GetAccountKeys(ctx, storageAccountName, resourceGroupName)
 	errors.HandleError(err)
 	primaryKey := *(((*keyResult.Keys)[0]).Value)
-	logger.PrintAndLog(fmt.Sprintf("Primary storage account key: %s\n", primaryKey))
+	logger.PrintAndLog("Primary storage account key")
 	return primaryKey
 }
 
@@ -73,7 +76,7 @@ func CreateStorageAccount(ctx context.Context, storageAccountName, resourceGroup
 		result, _ := future.Result(client)
 		logger.PrintAndLog(fmt.Sprintf("Storage Account: %s has been created.", *result.Name))
 	} else {
-		logger.PrintAndLog("Storage Account name is unavailable.")
+		logger.PrintAndLog("Storage Account has already been created")
 	}
 }
 

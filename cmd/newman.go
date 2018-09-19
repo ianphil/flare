@@ -3,17 +3,11 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"log"
-	"net/http"
-	"net/http/httputil"
-	"net/url"
-	"os"
-	"strings"
 
-	"github.com/iphilpot/flare/apis/storage"
 	"github.com/iphilpot/flare/apis/common"
+	"github.com/iphilpot/flare/apis/logger"
 	"github.com/iphilpot/flare/apis/resource"
-	"github.com/iphilpot/flare/apis/iam"
+	"github.com/iphilpot/flare/apis/storage"
 	"github.com/spf13/cobra"
 )
 
@@ -37,49 +31,26 @@ var newman = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		logger.PrintAndLog("Newman called")
 		ctx := context.Background()
-		var primaryKey string
-		var containerCollection azblob.ContainerURL
 
-		saName, rgName =: common.GenerateNames()
+		saName, rgName := common.GenerateNames()
 
-		common.PrintAndLog(fmt.Sprintf("Resource Group: %s | Storage Account: %s", rgName, saName))
+		logger.PrintAndLog(fmt.Sprintf("Resource Group: %s | Storage Account: %s", rgName, saName))
 
 		// Create resource group, check if exists
-		group := resoure.CreateResourceGroup(ctx, rgName, location)
-		
+		_ = resource.CreateResourceGroup(ctx, rgName, location)
+
 		// Create Storage Account
 		storage.CreateStorageAccount(ctx, saName, rgName, location)
-		
+
 		// Create storage containers
 		storage.CreateStorageContainer(ctx, saName, rgName, "collection")
 		storage.CreateStorageContainer(ctx, saName, rgName, "report")
 
-
-		// first pass primary key from create, if not create need to get for upload
-		if primaryKey == "" {
-			primaryKey, err = apiStorage.GetStorageAccountPrimaryKey(ctx, &storAccountClient, storName, storName)
-		}
-
-		// Upload postman collection file to collection container
-		if containerCollection == (azblob.ContainerURL{}) {
-			containerCollection = getContainerURL(ctx, storName, "collection", primaryKey)
-			fmt.Println(containerCollection.String())
-		}
-
-		blobURL := containerCollection.NewBlockBlobURL(postmanCollection)
-		file, err := os.Open(postmanCollection)
-		if err != nil {
-			log.Println(err)
-		}
-
-		_, err = azblob.UploadFileToBlockBlob(ctx, file, blobURL, azblob.UploadToBlockBlobOptions{
-			BlockSize:   4 * 1024 * 1024,
-			Parallelism: 16,
-		})
+		// Upload postman collection
+		storage.UploadBlob(ctx, saName, rgName, "collection", postmanCollection)
 
 		// All done
 		fmt.Println("Completed")
-
 	},
 }
 
