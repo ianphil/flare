@@ -2,7 +2,7 @@ package config
 
 import (
 	"github.com/gobuffalo/envy"
-	"github.com/iphilpot/flare/apis/common"
+	"github.com/iphilpot/flare/apis/errors"
 )
 
 // Config - containes all env vars
@@ -16,16 +16,16 @@ type Config struct {
 // GetConfig - Creates new config struct with state
 func GetConfig() Config {
 	azTenantID, err := envy.MustGet("AZURE_TENANT_ID")
-	common.HandleError(err)
+	errors.HandleError(err)
 
 	azClientID, err := envy.MustGet("AZURE_CLIENT_ID")
-	common.HandleError(err)
+	errors.HandleError(err)
 
 	azClientSecret, err := envy.MustGet("AZURE_CLIENT_SECRET")
-	common.HandleError(err)
+	errors.HandleError(err)
 
 	azSubscriptionID, err := envy.MustGet("AZURE_SUB_ID")
-	common.HandleError(err)
+	errors.HandleError(err)
 
 	return Config{
 		AzureTenantID:       azTenantID,

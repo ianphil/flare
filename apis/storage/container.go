@@ -6,7 +6,7 @@ import (
 	"net/url"
 
 	"github.com/Azure/azure-storage-blob-go/2018-03-28/azblob"
-	"github.com/iphilpot/flare/apis/common"
+	"github.com/iphilpot/flare/apis/errors"
 )
 
 var (
@@ -15,15 +15,15 @@ var (
 
 // CreateStorageContainer - Creates storage container
 func CreateStorageContainer(ctx context.Context, storageAccountName, resourceGroupName, storageContainerName string) {
-	primaryKey := GetStorageAccountPrimaryKey(ctx, storageAccountName, resourceGroupName)
-	storageContainer = getContainerURL(ctx, storageAccountName, storageContainerName, primaryKey)
-	_, err = containerCollection.Create(ctx, azblob.Metadata{}, azblob.PublicAccessContainer)
-	common.HandleError(err)
+	storageContainer := getContainerURL(ctx, storageAccountName, resourceGroupName, storageContainerName)
+	_, err := storageContainer.Create(ctx, azblob.Metadata{}, azblob.PublicAccessContainer)
+	errors.HandleError(err)
 }
 
-func getContainerURL(ctx context.Context, storageAccountName, storageContainerName, primaryKey string) azblob.ContainerURL {
-	blobCred, err := azblob.NewSharedKeyCredential(accountName, primaryKey)
-	common.HandleError(err)
+func getContainerURL(ctx context.Context, storageAccountName, resourceGroupName, storageContainerName string) azblob.ContainerURL {
+	primaryKey := GetStorageAccountPrimaryKey(ctx, storageAccountName, resourceGroupName)
+	blobCred, err := azblob.NewSharedKeyCredential(storageAccountName, primaryKey)
+	errors.HandleError(err)
 	accountURL, _ := url.Parse(fmt.Sprintf(blobFormatString, storageAccountName))
 	pipline := azblob.NewPipeline(blobCred, azblob.PipelineOptions{})
 	service := azblob.NewServiceURL(*accountURL, pipline)

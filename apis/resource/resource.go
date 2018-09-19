@@ -4,12 +4,14 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2018-02-01/resources"
-	"github.com/iphilpot/flare/apis/common"
+	"github.com/iphilpot/flare/apis/config"
+	"github.com/iphilpot/flare/apis/errors"
 	"github.com/iphilpot/flare/apis/iam"
 )
 
 func getResourceAccountClient() resources.GroupsClient {
-	client := resources.NewGroupsClient(subID)
+	c := config.GetConfig()
+	client := resources.NewGroupsClient(c.AzureSubscriptionID)
 	client.Authorizer = iam.GetAuthorizerFromEnvironment()
 	return client
 }
@@ -17,7 +19,7 @@ func getResourceAccountClient() resources.GroupsClient {
 func checkResourceGroupExists(ctx context.Context, resourceGroupName string) bool {
 	client := getResourceAccountClient()
 	rgCheck, err := client.CheckExistence(ctx, resourceGroupName)
-	common.HandleError(err)
+	errors.HandleError(err)
 	if rgCheck.StatusCode == 404 {
 		return false
 	}
@@ -27,14 +29,15 @@ func checkResourceGroupExists(ctx context.Context, resourceGroupName string) boo
 // CreateResourceGroup - Creates RG if it doesn't exist
 func CreateResourceGroup(ctx context.Context, resourceGroupName, location string) resources.Group {
 	client := getResourceAccountClient()
-	rgCheck := checkResourceGroupExists(resourceGroupName)
+	rgCheck := checkResourceGroupExists(ctx, resourceGroupName)
 	var group resources.Group
+	var err error
 	if rgCheck {
 		group, err = client.CreateOrUpdate(ctx, resourceGroupName, resources.Group{Location: &location})
-		common.HandleError(err)
+		errors.HandleError(err)
 	} else {
 		group, err = client.Get(ctx, resourceGroupName)
-		common.HandleError(err)
+		errors.HandleError(err)
 	}
 	return group
 }

@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"log"
 	"os"
 )
@@ -18,4 +19,10 @@ func init() {
 	}
 	Log = log.New(file, "", log.LstdFlags|log.Lshortfile)
 	Log.Println("LogFile : " + logpath)
+}
+
+// PrintAndLog writes to logger and stdout
+func PrintAndLog(message string) {
+	Log.Println(message)
+	fmt.Println(message)
 }
