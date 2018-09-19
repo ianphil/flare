@@ -15,13 +15,12 @@ import (
 	Cmd: flare newman --
 */
 
-var postmanCollection string
-var postmanIterations int
-var storExists bool
-var location string
-
 var (
-	blobFormatString = `https://%s.blob.core.windows.net`
+	blobFormatString  = `https://%s.blob.core.windows.net`
+	postmanCollection string
+	postmanIterations int
+	storExists        bool
+	location          string
 )
 
 var newman = &cobra.Command{
