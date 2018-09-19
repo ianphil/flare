@@ -11,10 +11,10 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/storage/mgmt/2018-03-01-preview/storage"
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2018-02-01/resources"
 	"github.com/Azure/azure-storage-blob-go/2018-03-28/azblob"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/iphilpot/flare/apis/common"
+	"github.com/iphilpot/flare/apis/resource"
 	"github.com/iphilpot/flare/apis/iam"
 	"github.com/spf13/cobra"
 
@@ -44,34 +44,14 @@ var newman = &cobra.Command{
 		var primaryKey string
 		var containerCollection azblob.ContainerURL
 
-		// Get envvars and generate storage account name based on last part of subID
-		subID := os.Getenv("AZURE_SUB_ID")
-		storName := strings.ToLower(fmt.Sprintf("flare%s", strings.Split(subID, "-")[4]))
-		println(storName)
+		saName, rgName =: common.GenerateNames()
+
+		common.PrintAndLog(fmt.Sprintf("Resource Group: %s | Storage Account: %s", rgName, saName))
 
 		// Create resource group, check if exists
-		groupsClient := resources.NewGroupsClient(subID)
-		groupsClient.Authorizer = iam.GetAuthorizerFromEnvironment()
+		group := resoure.CreateResourceGroup(ctx, rgName, location)
 
-		rgCheck, err := groupsClient.CheckExistence(ctx, storName)
-		if err != nil {
-			log.Println(err)
-		}
-
-		var group resources.Group
-		if rgCheck.StatusCode == 404 {
-			group, err = groupsClient.CreateOrUpdate(ctx, storName, resources.Group{Location: &location})
-			if err != nil {
-				log.Println(err)
-			}
-		} else {
-			group, err = groupsClient.Get(ctx, storName)
-			if err != nil {
-				log.Println(err)
-			}
-		}
-
-		fmt.Println(*group.Name)
+		common.PrintAndLog(fmt.Sprintf("Resource Group %s created", *group.Name))
 
 		// Test if storage exists
 		storAccountClient := storage.NewAccountsClient(subID)
@@ -177,20 +157,6 @@ func getContainerURL(ctx context.Context, accountName, containerName, primaryKey
 	pipline := azblob.NewPipeline(blobCred, azblob.PipelineOptions{})
 	service := azblob.NewServiceURL(*accountURL, pipline)
 	return service.NewContainerURL(containerName)
-}
-
-func getStorageAccountPrimaryKey(ctx context.Context, storageAccountClient *storage.AccountsClient, accountName, accountGroupName string) (string, error) {
-	// Get Primary storage account key
-	keyResult, err := storageAccountClient.ListKeys(ctx, accountGroupName, accountName)
-	if err != nil {
-		log.Println(err)
-	}
-
-	primaryKey := *(((*keyResult.Keys)[0]).Value)
-
-	fmt.Printf("Primary storage account key: %s\n", primaryKey)
-
-	return primaryKey, err
 }
 
 func init() {

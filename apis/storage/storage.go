@@ -32,14 +32,14 @@ func checkStorageAccountNameAvailable(ctx context.Context, storageAccountName *s
 }
 
 // GetAccountKeys - Returns keys for specified account
-func GetAccountKeys(ctx context.Context, accountName, accountGroupName string) (storage.AccountListKeysResult, error) {
+func GetAccountKeys(ctx context.Context, storageAccountName, resourceGroupName string) (storage.AccountListKeysResult, error) {
 	client := getStorageAccountClient()
-	return client.ListKeys(ctx, accountGroupName, accountName)
+	return client.ListKeys(ctx, resourceGroupName, storageAccountName)
 }
 
 // GetStorageAccountPrimaryKey - Return primary key of storage account.
-func GetStorageAccountPrimaryKey(ctx context.Context, accountName, accountGroupName string) string {
-	keyResult, err := GetAccountKeys(ctx, accountGroupName, accountName)
+func GetStorageAccountPrimaryKey(ctx context.Context, storageAccountName, resourceGroupName string) string {
+	keyResult, err := GetAccountKeys(ctx, resourceGroupName, storageAccountName)
 	common.HandleError(err)
 	primaryKey := *(((*keyResult.Keys)[0]).Value)
 	common.PrintAndLog(fmt.Sprintf("Primary storage account key: %s\n", primaryKey))

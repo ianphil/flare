@@ -8,7 +8,6 @@ import (
 
 // GetAuthorizerFromEnvironment - returns authorizer from Env Vars
 func GetAuthorizerFromEnvironment() autorest.Authorizer {
-	// create an authorizer from env vars or Azure Managed Service Identity
 	authorizer, err := auth.NewAuthorizerFromEnvironment()
 	common.HandleError(err)
 
