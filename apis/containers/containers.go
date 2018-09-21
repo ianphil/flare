@@ -70,7 +70,7 @@ func defineContainerGroup(containerName, location, dnsName string, port int32, c
 // CreateContainer - Creates a container
 func CreateContainer(ctx context.Context, resourceGroupName, containerGroupName, location, dnsName string) {
 	client := getContainerInstanceClient()
-	cProps := defineContainerProperties("newman", 80, 2, 1)
+	cProps := defineContainerProperties("nginx", 80, 2, 1)
 	gProps := defineContainerGroup("harness", location, "harnessname", 80, cProps)
 	future, err := client.CreateOrUpdate(ctx, resourceGroupName, containerGroupName, gProps)
 	errors.HandleError(err)

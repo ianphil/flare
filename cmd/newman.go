@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/iphilpot/flare/apis/common"
+	"github.com/iphilpot/flare/apis/containers"
 	"github.com/iphilpot/flare/apis/logger"
 	"github.com/iphilpot/flare/apis/resource"
 	"github.com/iphilpot/flare/apis/storage"
@@ -47,6 +48,9 @@ var newman = &cobra.Command{
 
 		// Upload postman collection
 		storage.UploadBlob(ctx, saName, rgName, "collection", postmanCollection)
+
+		// Create Newman container in ACI
+		containers.CreateContainer(ctx, rgName, "harnessgroup", location, "harnesstuff")
 
 		// All done
 		fmt.Println("Completed")
