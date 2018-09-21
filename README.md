@@ -1,5 +1,5 @@
 # Flare
-Is a command line utility that runs newman tests against an API. It does this by createing multiple containers in Azure Container Insances. One executes the requests contained in a Postman collection file. The other serves the report generated.
+Is a command line utility that runs newman tests against an API. It does this by createing multiple containers in Azure Container Instances (ACI). One executes the requests contained in a Postman collection file. The other serves the report generated.
 
 This can help you test your web app/api from any Azure Data Center where ACI instances will run.
 
