@@ -17,3 +17,9 @@ Run flare
 `./flare --help`
 
 This project is in the very early stages of development. If you have questions please post an issue.
+
+## Contributing
+Please see our [CONTRIBUTING](CONTRIBUTING.md) guide.
+
+## Code of Conduct
+Please see our [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md).
