@@ -14,18 +14,24 @@ var (
 	blobFormatString = `https://%s.blob.core.windows.net`
 )
 
+type serviceCode interface {
+	ServiceCode() azblob.ServiceCodeType
+}
+
 // CreateStorageContainer - Creates storage container
 func CreateStorageContainer(ctx context.Context, storageAccountName, resourceGroupName, storageContainerName string) {
 	storageContainer := getContainerURL(ctx, storageAccountName, resourceGroupName, storageContainerName)
 	_, err := storageContainer.Create(ctx, azblob.Metadata{}, azblob.PublicAccessContainer)
 	if err != nil {
-		if stErr, ok := err.(azblob.StorageError); ok {
-			code := stErr.ServiceCode()
-			if code != azblob.ServiceCodeContainerAlreadyExists {
+		switch e := err.(type) {
+		case serviceCode:
+			if e.ServiceCode() != azblob.ServiceCodeContainerAlreadyExists {
 				errors.HandleError(err)
 			} else {
-				logger.PrintAndLog("Container already exists")
+				logger.PrintAndLog("Containers already exists")
 			}
+		default:
+			errors.HandleError(err)
 		}
 	}
 }

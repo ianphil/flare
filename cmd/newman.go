@@ -32,7 +32,7 @@ var newman = &cobra.Command{
 		logger.PrintAndLog("Newman called")
 		ctx := context.Background()
 
-		saName, rgName := common.GenerateNames()
+		saName, rgName, dnsName := common.GenerateNames()
 
 		logger.PrintAndLog(fmt.Sprintf("Resource Group: %s | Storage Account: %s", rgName, saName))
 
@@ -50,7 +50,30 @@ var newman = &cobra.Command{
 		storage.UploadBlob(ctx, saName, rgName, "collection", postmanCollection)
 
 		// Create Newman container in ACI
-		containers.CreateContainer(ctx, rgName, "harnessgroup", location, "harnesstuff")
+		containerGroup := containers.ContainerGroup{
+			GroupName:         "NewmanHarness",
+			DNSName:           dnsName,
+			Location:          location,
+			Port:              80,
+			ResourceGroupName: rgName,
+			Containers: []containers.Container{
+				containers.Container{
+					Name:      "newman",
+					ImageName: "nginx",
+					CPU:       1,
+					Memory:    2,
+					Port:      8080, // TODO: this is not needed, going to need to create specific container types or function... hmmm
+				},
+				containers.Container{
+					Name:      "web",
+					ImageName: "nginx",
+					CPU:       1,
+					Memory:    2,
+					Port:      80,
+				},
+			},
+		}
+		containerGroup.CreateContainerGroup(ctx)
 
 		// All done
 		fmt.Println("Completed")

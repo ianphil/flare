@@ -41,16 +41,19 @@ func defineContainerProperties(imageName string, port int32, memory, cpu float64
 	}
 }
 
-func defineContainerGroup(containerName, location, dnsName string, port int32, containerProperties containerinstance.ContainerProperties) containerinstance.ContainerGroup {
+func defineContainerGroup(location, dnsName string, port int32, containers []Container) containerinstance.ContainerGroup {
+	var containerSet []containerinstance.Container
+	for i := range containers {
+		currContainer := containerinstance.Container{
+			Name:                &containers[i].Name,
+			ContainerProperties: &containers[i].Properties,
+		}
+		containerSet = append(containerSet, currContainer)
+	}
 	return containerinstance.ContainerGroup{
 		Location: &location,
 		ContainerGroupProperties: &containerinstance.ContainerGroupProperties{
-			Containers: &[]containerinstance.Container{
-				containerinstance.Container{
-					Name:                &containerName,
-					ContainerProperties: &containerProperties,
-				},
-			},
+			Containers:    &containerSet,
 			RestartPolicy: containerinstance.Always,
 			OsType:        containerinstance.Linux,
 			IPAddress: &containerinstance.IPAddress{
@@ -67,12 +70,35 @@ func defineContainerGroup(containerName, location, dnsName string, port int32, c
 	}
 }
 
-// CreateContainer - Creates a container
-func CreateContainer(ctx context.Context, resourceGroupName, containerGroupName, location, dnsName string) {
+// Container - Desctibes the containers you want to create
+type Container struct {
+	Name       string
+	ImageName  string
+	Port       int32
+	CPU        float64
+	Memory     float64
+	Properties containerinstance.ContainerProperties
+}
+
+// ContainerGroup - Describes the group of containers to be created
+type ContainerGroup struct {
+	GroupName         string
+	ResourceGroupName string
+	Location          string
+	DNSName           string
+	Port              int32
+	Containers        []Container
+}
+
+// CreateContainerGroup - Creates a container group
+func (cg ContainerGroup) CreateContainerGroup(ctx context.Context) {
 	client := getContainerInstanceClient()
-	cProps := defineContainerProperties("nginx", 80, 2, 1)
-	gProps := defineContainerGroup("harness", location, "harnessname", 80, cProps)
-	future, err := client.CreateOrUpdate(ctx, resourceGroupName, containerGroupName, gProps)
+	for i := range cg.Containers {
+		cg.Containers[i].Properties = defineContainerProperties(cg.Containers[i].ImageName,
+			cg.Containers[i].Port, cg.Containers[i].Memory, cg.Containers[i].CPU)
+	}
+	containerGroup := defineContainerGroup(cg.Location, cg.DNSName, cg.Port, cg.Containers)
+	future, err := client.CreateOrUpdate(ctx, cg.ResourceGroupName, cg.GroupName, containerGroup)
 	errors.HandleError(err)
 	err = future.WaitForCompletion(ctx, client.Client)
 	errors.HandleError(err)
