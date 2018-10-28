@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/Azure/azure-storage-blob-go/2018-03-28/azblob"
+	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/iphilpot/flare/apis/errors"
 	"github.com/iphilpot/flare/apis/logger"
 )

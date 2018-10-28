@@ -11,10 +11,6 @@ import (
 	"github.com/iphilpot/flare/apis/logger"
 )
 
-var (
-	ipType = "Public"
-)
-
 func getContainerInstanceClient() containerinstance.ContainerGroupsClient {
 	authorizer := iam.GetAuthorizerFromEnvironment()
 	c := config.GetConfig()
@@ -63,7 +59,7 @@ func defineContainerGroup(location, dnsName string, port int32, containers []Con
 						Port:     &port,
 					},
 				},
-				Type:         &ipType,
+				Type:         containerinstance.Public,
 				DNSNameLabel: &dnsName,
 			},
 		},
